@@ -4,7 +4,7 @@ A full-stack web application for creating optimized hackathon teams based on rol
 
 ## Features
 
-### Core Functionality
+### Core Functionality (v1)
 - **Intelligent Team Generation**: Create balanced teams using an optimization algorithm
 - **Role-based Assignment**: Organize participants by their roles (Developer, Designer, etc.)
 - **Custom Constraints**: Define rules like "User A cannot be with User B" or "User C must be with User D"
@@ -24,6 +24,20 @@ A full-stack web application for creating optimized hackathon teams based on rol
 - **Real-time Updates**: See optimization scores and constraint violations
 - **Responsive Design**: Works on desktop and tablet devices
 
+### Extended Backend Features (v2)
+- Export teams to CSV and PDF (backend complete)
+- Export participants to CSV
+- Import participants from CSV (duplicate & validation handling)
+- Detailed team statistics endpoint
+- Team history & versioning (save, list, restore)
+- Email notifications for team assignments
+- Admin panel backend (user/project/system stats, role management)
+- Skill-based constraints (backend only)
+- Enhanced participant schema (skills, email)
+- Role distribution exact counts per team
+
+> Frontend UI for v2 features is not yet implemented. Backend endpoints are ready.
+
 ## Tech Stack
 
 ### Backend
@@ -39,6 +53,16 @@ A full-stack web application for creating optimized hackathon teams based on rol
 - **Pinia** for state management
 - **Vite** for build tooling
 - **Axios** for HTTP requests
+
+### Additional Backend Dependencies (v2)
+Installed in backend/package.json:
+```bash
+npm install csv-parse csv-stringify pdfkit multer
+```
+
+- csv-parse / csv-stringify: CSV import/export
+- pdfkit: PDF generation
+- multer: File upload handling
 
 ## Prerequisites
 
@@ -66,14 +90,14 @@ Create a `.env` file in the `backend` directory:
 
 ```env
 # Server Configuration
-PORT=5000
+PORT=8080
 NODE_ENV=development
 
 # Database
 MONGODB_URI=mongodb://localhost:27017/teambuilder
 
 # JWT Secret (change this!)
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_SECRET=change-this-to-a-secure-random-string
 
 # Email Configuration (Gmail example)
 EMAIL_HOST=smtp.gmail.com
@@ -90,7 +114,7 @@ MAGIC_LINK_EXPIRY=15
 ```
 
 ### 3. Frontend Setup
-
+If using backend on 8080:
 ```bash
 cd ../frontend
 npm install
@@ -99,7 +123,7 @@ npm install
 Create a `.env` file in the `frontend` directory (optional):
 
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:8080/api
 ```
 
 ### 4. Database Setup
@@ -135,7 +159,7 @@ npm run dev
 
 The application will be available at:
 - Frontend: http://localhost:5173
-- Backend API: http://localhost:5000
+- Backend API: http://localhost:8080
 
 ### Production Build
 
@@ -204,6 +228,26 @@ Two types of constraints are available:
 - Select 2 or more participants who MUST be on the same team
 - Example: "Carol and Dave are a package deal"
 
+### Constraints (Updated)
+Supported types:
+1. cannot_be_together (≥2 participants)
+2. must_be_together (≥2 participants, ≤ team size)
+3. role_distribution (exact count per role per team; counts must sum to teamSize)
+4. skill_based (backend only; requires skillRequirements array with min/max per skill)
+
+Example role distribution constraint request:
+```json
+{
+  "type": "role_distribution",
+  "roleRequirements": {
+    "Developer": 2,
+    "Designer": 1,
+    "Product Manager": 1
+  },
+  "description": "Each team must have 2 Developers, 1 Designer, 1 PM"
+}
+```
+
 ### 4. Optimize Teams
 
 1. Click "Optimize Teams" button
@@ -226,6 +270,31 @@ After optimization, you can:
 
 Projects are automatically saved to the database. Access them anytime from the Dashboard.
 
+### New v2 Workflows (Backend Available)
+
+#### Export Teams
+1. Optimize teams.
+2. Call GET `/api/export/teams/:id/csv` or `/api/export/teams/:id/pdf`.
+
+#### Import Participants
+1. Prepare CSV: `Name,Role,Skills`
+2. POST `/api/export/teams/:id/import` (multipart/form-data with file).
+
+#### Team History
+- Save current configuration: `POST /api/teams/:id/history/save`
+- List versions: `GET /api/teams/:id/history`
+- Restore: `POST /api/teams/:id/history/:version/restore`
+
+#### Notifications
+- Send assignment emails: `POST /api/teams/:id/notify`
+- Update settings: `PATCH /api/teams/:id/notifications` (e.g. `{ "sendOnOptimization": true }`)
+
+#### Admin (after promoting a user)
+```bash
+mongosh teambuilder
+db.users.updateOne({ email: "your-email@example.com" }, { $set: { role: "admin" } })
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -236,7 +305,7 @@ Projects are automatically saved to the database. Access them anytime from the D
 - `POST /api/auth/verify-magic-link` - Verify magic link
 - `GET /api/auth/me` - Get current user
 
-### Teams
+### Team Projects (v1)
 - `GET /api/teams` - Get all projects
 - `GET /api/teams/:id` - Get single project
 - `POST /api/teams` - Create new project
@@ -249,90 +318,99 @@ Projects are automatically saved to the database. Access them anytime from the D
 - `POST /api/teams/:id/optimize` - Optimize teams
 - `PUT /api/teams/:id/teams` - Update generated teams
 
-## Optimization Algorithm
+### Additional Endpoints (v2)
 
-The team optimization algorithm:
-
-1. **Validates constraints** before optimization
-2. **Applies randomness** based on the randomness factor
-3. **Prioritizes must-be-together** constraints first
-4. **Avoids cannot-be-together** violations
-5. **Balances team sizes** to prevent uneven distribution
-6. **Promotes role diversity** within teams
-7. **Calculates a score** based on:
-   - Constraint violations (heavy penalty)
-   - Team size balance
-   - Role distribution
-8. **Runs multiple iterations** to find the best solution
-
-## Project Structure
-
+#### Export / Import
 ```
-TeamBuilder/
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   │   └── database.js
-│   │   ├── middleware/
-│   │   │   └── auth.js
-│   │   ├── models/
-│   │   │   ├── User.js
-│   │   │   └── Team.js
-│   │   ├── routes/
-│   │   │   ├── auth.js
-│   │   │   └── teams.js
-│   │   ├── services/
-│   │   │   ├── emailService.js
-│   │   │   └── teamOptimizer.js
-│   │   └── server.js
-│   ├── .env.example
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   └── Navbar.vue
-│   │   ├── router/
-│   │   │   └── index.js
-│   │   ├── services/
-│   │   │   └── api.js
-│   │   ├── stores/
-│   │   │   ├── auth.js
-│   │   │   └── teams.js
-│   │   ├── views/
-│   │   │   ├── Dashboard.vue
-│   │   │   ├── Login.vue
-│   │   │   ├── LoginVerify.vue
-│   │   │   ├── MagicLink.vue
-│   │   │   ├── NewProject.vue
-│   │   │   ├── ProjectDetail.vue
-│   │   │   ├── Register.vue
-│   │   │   └── VerifyEmail.vue
-│   │   ├── App.vue
-│   │   └── main.js
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-└── README.md
+GET    /api/export/teams/:id/csv
+GET    /api/export/teams/:id/participants/csv
+GET    /api/export/teams/:id/pdf
+GET    /api/export/teams/:id/stats
+POST   /api/export/teams/:id/import
+GET    /api/export/sample-csv
 ```
 
-## Troubleshooting
+#### History / Versioning
+```
+POST   /api/teams/:id/history/save
+GET    /api/teams/:id/history
+POST   /api/teams/:id/history/:version/restore
+```
 
-### MongoDB Connection Error
-- Ensure MongoDB is running: `brew services list` (macOS) or `sudo systemctl status mongod` (Linux)
-- Check the connection string in `.env`
+#### Notifications
+```
+POST   /api/teams/:id/notify
+PATCH  /api/teams/:id/notifications
+```
 
-### Email Not Sending
-- Verify SMTP credentials in `.env`
-- Check if less secure app access is enabled (for Gmail)
-- Try generating an app-specific password
+#### Admin
+```
+GET    /api/admin/users
+GET    /api/admin/users/:id
+PATCH  /api/admin/users/:id/role
+DELETE /api/admin/users/:id
+GET    /api/admin/projects
+GET    /api/admin/stats
+```
 
-### Port Already in Use
-- Change `PORT` in backend `.env`
-- Change `server.port` in frontend `vite.config.js`
+### Constraint Addition (role_distribution example)
+...existing code...
 
-### CORS Errors
-- Ensure `FRONTEND_URL` in backend `.env` matches your frontend URL
-- Check that the proxy is configured in `vite.config.js`
+## Data Model Updates (v2)
+
+### Participant (extended)
+```javascript
+{
+  name: String,
+  role: String,
+  email: String,        // optional (for notifications)
+  skills: [String]      // optional (for skill-based constraints)
+}
+```
+
+### Constraint (extended)
+```javascript
+{
+  type: 'cannot_be_together' | 'must_be_together' | 'role_distribution' | 'skill_based',
+  participants: [String],           // for participant-based
+  roleRequirements: { Role: Number }, // for role_distribution
+  skillRequirements: [               // for skill_based
+    { skill: String, minCount: Number, maxCount: Number }
+  ],
+  description: String
+}
+```
+
+### Team Project (added fields)
+```javascript
+{
+  history: [ { version, teams, optimizationScore, notes, generatedAt } ],
+  currentVersion: Number,
+  notifications: {
+    sendOnOptimization: Boolean,
+    lastSentAt: Date
+  }
+}
+```
+
+### User (added field)
+```javascript
+{
+  role: 'user' | 'admin',
+  lastLoginAt: Date
+}
+```
+
+## Optimization Algorithm (Updated)
+Penalties:
+- cannot_be_together: -20
+- must_be_together: -15
+- role_distribution mismatch: -18 per team per role
+- size imbalance: -5 per member difference
+Bonuses:
+- role diversity: up to +5 per team
+
+Iterations scale by randomness factor (≤20 → 100, >20 → 50, >50 → 10).
 
 ## Future Enhancements
 
@@ -342,6 +420,28 @@ TeamBuilder/
 - Real-time collaboration
 - Integration with Slack/Discord
 - Mobile app version
+
+## Troubleshooting (Updated Ports)
+- If frontend 5173 cannot reach backend: verify backend runs on 8080 and `VITE_API_URL` matches.
+- Constraint errors: ensure role distribution totals equal `teamSize`.
+
+## Known Gaps (Frontend Pending)
+- No UI yet for export/import/history/admin/notifications/skill constraints.
+- All endpoints testable via curl/Postman.
+
+## Quick Test Commands
+
+```bash
+# Export teams CSV
+curl -H "Authorization: Bearer TOKEN" \
+  http://localhost:8080/api/export/teams/PROJECT_ID/csv -o teams.csv
+
+# Save version
+curl -X POST -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"notes":"Initial"}' \
+  http://localhost:8080/api/teams/PROJECT_ID/history/save
+```
 
 ## License
 

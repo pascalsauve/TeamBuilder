@@ -52,6 +52,30 @@ const routes = [
     component: () => import('../views/ProjectDetail.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/project/:id/stats',
+    name: 'ProjectStats',
+    component: () => import('../views/ProjectStats.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/project/:id/history',
+    name: 'ProjectHistory',
+    component: () => import('../views/ProjectHistory.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('../views/AdminDashboard.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: '/admin/users',
+    name: 'AdminUsers',
+    component: () => import('../views/AdminUsers.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
 ];
 
 const router = createRouter({
@@ -66,6 +90,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login');
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    next('/dashboard');
+  } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
     next('/dashboard');
   } else {
     next();

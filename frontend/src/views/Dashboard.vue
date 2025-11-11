@@ -2,9 +2,14 @@
   <div class="dashboard">
     <div class="dashboard-header">
       <h1>Your Team Projects</h1>
-      <router-link to="/project/new" class="btn btn-primary">
-        Create New Project
-      </router-link>
+      <div class="header-actions">
+        <router-link v-if="authStore.isAdmin" to="/admin" class="btn btn-secondary">
+          Admin Panel
+        </router-link>
+        <router-link to="/project/new" class="btn btn-primary">
+          Create New Project
+        </router-link>
+      </div>
     </div>
 
     <div v-if="loading" class="loading-container">
@@ -71,8 +76,10 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useTeamsStore } from '../stores/teams';
+import { useAuthStore } from '../stores/auth';
 
 const teamsStore = useTeamsStore();
+const authStore = useAuthStore();
 const loading = ref(true);
 const error = ref('');
 
@@ -108,6 +115,11 @@ const deleteProject = async (id) => {
 .dashboard-header h1 {
   font-size: 2rem;
   color: #1F2937;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .loading-container {

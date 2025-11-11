@@ -8,6 +8,10 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: !!localStorage.getItem('token'),
   }),
 
+  getters: {
+    isAdmin: (state) => state.user?.role === 'admin',
+  },
+
   actions: {
     async register(username, email, password) {
       try {

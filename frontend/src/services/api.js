@@ -57,6 +57,42 @@ export const teamsAPI = {
 
   optimize: (id) => api.post(`/teams/${id}/optimize`),
   updateTeams: (id, teams) => api.put(`/teams/${id}/teams`, { generatedTeams: teams }),
+
+  // History & Versioning
+  saveVersion: (id, notes) => api.post(`/teams/${id}/history/save`, { notes }),
+  getHistory: (id) => api.get(`/teams/${id}/history`),
+  restoreVersion: (id, version) => api.post(`/teams/${id}/history/${version}/restore`),
+  deleteVersion: (id, version) => api.delete(`/teams/${id}/history/${version}`),
+
+  // Notifications
+  sendNotifications: (id) => api.post(`/teams/${id}/notify`),
+  updateNotificationSettings: (id, settings) => api.patch(`/teams/${id}/notifications`, settings),
+};
+
+// Export & Import API
+export const exportAPI = {
+  exportTeamsCSV: (id) => api.get(`/export/teams/${id}/csv`, { responseType: 'blob' }),
+  exportParticipantsCSV: (id) => api.get(`/export/teams/${id}/participants/csv`, { responseType: 'blob' }),
+  exportTeamsPDF: (id) => api.get(`/export/teams/${id}/pdf`, { responseType: 'blob' }),
+  getStats: (id) => api.get(`/export/teams/${id}/stats`),
+  importParticipants: (id, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/export/teams/${id}/import`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  getSampleCSV: () => api.get('/export/sample-csv', { responseType: 'blob' }),
+};
+
+// Admin API
+export const adminAPI = {
+  getUsers: () => api.get('/admin/users'),
+  getUser: (id) => api.get(`/admin/users/${id}`),
+  updateUserRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  getProjects: () => api.get('/admin/projects'),
+  getStats: () => api.get('/admin/stats'),
 };
 
 export default api;

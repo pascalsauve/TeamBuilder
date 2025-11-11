@@ -21,10 +21,16 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6
   },
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  },
   isVerified: {
     type: Boolean,
     default: false
   },
+  lastLoginAt: Date,
   verificationToken: String,
   verificationTokenExpiry: Date,
   resetPasswordToken: String,

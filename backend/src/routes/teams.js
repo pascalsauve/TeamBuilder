@@ -228,13 +228,13 @@ router.post('/:id/constraints', async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    const { type, participants, description, roleRequirements } = req.body;
+    const { type, participants, description, roleRequirements, skillRequirements } = req.body;
 
     if (!type || !description) {
       return res.status(400).json({ error: 'Type and description are required' });
     }
 
-    const validTypes = ['cannot_be_together', 'must_be_together', 'role_distribution', 'team_size'];
+    const validTypes = ['cannot_be_together', 'must_be_together', 'role_distribution', 'skill_based', 'team_size'];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ error: 'Invalid constraint type' });
     }
@@ -246,6 +246,12 @@ router.post('/:id/constraints', async (req, res) => {
         return res.status(400).json({ error: 'Role requirements are required for role distribution constraint' });
       }
       constraintData.roleRequirements = roleRequirements;
+      constraintData.participants = [];
+    } else if (type === 'skill_based') {
+      if (!skillRequirements || !Array.isArray(skillRequirements) || skillRequirements.length === 0) {
+        return res.status(400).json({ error: 'Skill requirements are required for skill-based constraint' });
+      }
+      constraintData.skillRequirements = skillRequirements;
       constraintData.participants = [];
     } else {
       if (!participants || !Array.isArray(participants) || participants.length < 2) {
@@ -384,6 +390,221 @@ router.put('/:id/teams', async (req, res) => {
     });
   } catch (error) {
     console.error('Update teams error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Save current teams to history
+router.post('/:id/history/save', async (req, res) => {
+  try {
+    const project = await TeamProject.findOne({
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    if (!project.generatedTeams || project.generatedTeams.length === 0) {
+      return res.status(400).json({ error: 'No teams to save' });
+    }
+
+    const { notes } = req.body;
+
+    // Calculate next version based on highest version in history, not currentVersion
+    // This prevents duplicate version numbers when restoring to older versions
+    const maxVersion = project.history.length > 0
+      ? Math.max(...project.history.map(h => h.version))
+      : 0;
+
+    const newVersion = {
+      version: maxVersion + 1,
+      teams: project.generatedTeams,
+      optimizationScore: project.optimizationScore,
+      randomnessFactor: project.randomnessFactor,
+      teamSize: project.teamSize,
+      notes: notes || ''
+    };
+
+    project.history.push(newVersion);
+    project.currentVersion = newVersion.version;
+
+    await project.save();
+
+    res.json({
+      message: 'Team version saved successfully',
+      version: newVersion.version,
+      project
+    });
+  } catch (error) {
+    console.error('Save history error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get team history
+router.get('/:id/history', async (req, res) => {
+  try {
+    const project = await TeamProject.findOne({
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    res.json({
+      history: project.history,
+      currentVersion: project.currentVersion
+    });
+  } catch (error) {
+    console.error('Get history error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Restore from history version
+router.post('/:id/history/:version/restore', async (req, res) => {
+  try {
+    const project = await TeamProject.findOne({
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const version = parseInt(req.params.version);
+    const historyEntry = project.history.find(h => h.version === version);
+
+    if (!historyEntry) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    project.generatedTeams = historyEntry.teams;
+    project.optimizationScore = historyEntry.optimizationScore;
+    project.isOptimized = true;
+    project.currentVersion = version;
+
+    await project.save();
+
+    res.json({
+      message: `Restored to version ${version}`,
+      project
+    });
+  } catch (error) {
+    console.error('Restore history error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete a version from history
+router.delete('/:id/history/:version', async (req, res) => {
+  try {
+    const project = await TeamProject.findOne({
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const version = parseInt(req.params.version);
+
+    // Prevent deletion of current version
+    if (project.currentVersion === version) {
+      return res.status(400).json({ error: 'Cannot delete the current active version' });
+    }
+
+    const historyIndex = project.history.findIndex(h => h.version === version);
+
+    if (historyIndex === -1) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    project.history.splice(historyIndex, 1);
+    await project.save();
+
+    res.json({
+      message: `Version ${version} deleted successfully`,
+      history: project.history
+    });
+  } catch (error) {
+    console.error('Delete version error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Send team assignment notifications
+router.post('/:id/notify', async (req, res) => {
+  try {
+    const project = await TeamProject.findOne({
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    if (!project.generatedTeams || project.generatedTeams.length === 0) {
+      return res.status(400).json({ error: 'No teams to notify about' });
+    }
+
+    const { sendBulkTeamAssignments } = await import('../services/emailService.js');
+    const results = await sendBulkTeamAssignments(project);
+
+    // Update notification timestamp
+    if (!project.notifications) {
+      project.notifications = {};
+    }
+    project.notifications.lastSentAt = new Date();
+    await project.save();
+
+    res.json({
+      message: 'Notifications sent',
+      results
+    });
+  } catch (error) {
+    console.error('Send notifications error:', error);
+    res.status(500).json({ error: 'Server error during notification' });
+  }
+});
+
+// Update notification settings
+router.patch('/:id/notifications', async (req, res) => {
+  try {
+    const project = await TeamProject.findOne({
+      _id: req.params.id,
+      userId: req.userId
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const { sendOnOptimization } = req.body;
+
+    if (!project.notifications) {
+      project.notifications = {};
+    }
+
+    if (sendOnOptimization !== undefined) {
+      project.notifications.sendOnOptimization = sendOnOptimization;
+    }
+
+    await project.save();
+
+    res.json({
+      message: 'Notification settings updated',
+      project
+    });
+  } catch (error) {
+    console.error('Update notifications error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

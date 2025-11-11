@@ -95,3 +95,78 @@ export const sendLoginEmail = async (email, token, username) => {
     throw error;
   }
 };
+
+export const sendTeamAssignmentEmail = async (participant, team, projectName) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: participant.email,
+    subject: `Team Assignment - ${projectName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>You've Been Assigned to a Team!</h2>
+        <p>Hi ${participant.name},</p>
+        <p>You have been assigned to a team for <strong>${projectName}</strong>.</p>
+
+        <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #4F46E5;">${team.teamName || `Team ${team.teamNumber}`}</h3>
+          <p style="margin: 10px 0;"><strong>Your Role:</strong> ${participant.role}</p>
+          <p style="margin: 10px 0;"><strong>Team Members:</strong></p>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            ${team.members.map(m => `<li>${m.name} - ${m.role}</li>`).join('')}
+          </ul>
+        </div>
+
+        <p>Looking forward to working with you!</p>
+
+        <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
+          This is an automated notification from Team Builder.
+        </p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Team assignment email sent to:', participant.email);
+    return true;
+  } catch (error) {
+    console.error('Error sending team assignment email:', error);
+    throw error;
+  }
+};
+
+export const sendBulkTeamAssignments = async (project) => {
+  const results = {
+    sent: 0,
+    failed: 0,
+    skipped: 0,
+    errors: []
+  };
+
+  for (const team of project.generatedTeams) {
+    for (const member of team.members) {
+      // Find participant with email
+      const participant = project.participants.find(p => p.name === member.name);
+
+      if (!participant || !participant.email) {
+        results.skipped++;
+        continue;
+      }
+
+      try {
+        await sendTeamAssignmentEmail(participant, team, project.projectName);
+        results.sent++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          participant: participant.name,
+          error: error.message
+        });
+      }
+    }
+  }
+
+  return results;
+};

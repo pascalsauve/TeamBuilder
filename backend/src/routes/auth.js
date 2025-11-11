@@ -105,7 +105,8 @@ router.post('/verify-email', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
   } catch (error) {
@@ -150,13 +151,18 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Update last login timestamp
+    user.lastLoginAt = new Date();
+    await user.save();
+
     res.json({
       message: 'Login successful',
       token,
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
   } catch (error) {
@@ -235,9 +241,10 @@ router.post('/verify-magic-link', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired login link' });
     }
 
-    // Clear the magic link token
+    // Clear the magic link token and update last login
     user.resetPasswordToken = undefined;
     user.resetPasswordExpiry = undefined;
+    user.lastLoginAt = new Date();
     await user.save();
 
     // Generate JWT token
@@ -253,7 +260,8 @@ router.post('/verify-magic-link', async (req, res) => {
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
   } catch (error) {
@@ -270,7 +278,8 @@ router.get('/me', authenticate, async (req, res) => {
         id: req.user._id,
         username: req.user.username,
         email: req.user.email,
-        isVerified: req.user.isVerified
+        isVerified: req.user.isVerified,
+        role: req.user.role
       }
     });
   } catch (error) {

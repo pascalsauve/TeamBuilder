@@ -11,6 +11,15 @@ const participantSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  skills: [{
+    type: String,
+    trim: true
+  }],
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true
+  },
   assignedTeam: {
     type: Number,
     default: null
@@ -20,7 +29,7 @@ const participantSchema = new mongoose.Schema({
 const constraintSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['cannot_be_together', 'must_be_together', 'role_distribution', 'team_size'],
+    enum: ['cannot_be_together', 'must_be_together', 'role_distribution', 'skill_based', 'team_size'],
     required: true
   },
   participants: [{
@@ -31,6 +40,11 @@ const constraintSchema = new mongoose.Schema({
     of: Number,
     default: undefined // For role_distribution constraints: { "Developer": 2, "Designer": 1 }
   },
+  skillRequirements: [{
+    skill: String,
+    minCount: Number,
+    maxCount: Number
+  }],
   description: {
     type: String,
     required: true
@@ -48,8 +62,25 @@ const teamResultSchema = new mongoose.Schema({
   },
   members: [{
     name: String,
-    role: String
+    role: String,
+    skills: [String]
   }]
+});
+
+const teamHistorySchema = new mongoose.Schema({
+  version: {
+    type: Number,
+    required: true
+  },
+  generatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  teams: [teamResultSchema],
+  optimizationScore: Number,
+  randomnessFactor: Number,
+  teamSize: Number,
+  notes: String
 });
 
 const teamProjectSchema = new mongoose.Schema({
@@ -90,6 +121,18 @@ const teamProjectSchema = new mongoose.Schema({
   optimizationScore: {
     type: Number,
     default: 0
+  },
+  history: [teamHistorySchema],
+  currentVersion: {
+    type: Number,
+    default: 0
+  },
+  notifications: {
+    sendOnOptimization: {
+      type: Boolean,
+      default: false
+    },
+    lastSentAt: Date
   }
 }, {
   timestamps: true

@@ -46,7 +46,7 @@ export const generateParticipantsCSV = (project) => {
   const records = [];
 
   // Add header
-  records.push(['Name', 'Role', 'Assigned Team']);
+  records.push(['Name', 'Role', 'Email', 'Skills', 'Assigned Team']);
 
   // Add participants
   for (const participant of project.participants) {
@@ -57,6 +57,8 @@ export const generateParticipantsCSV = (project) => {
     records.push([
       participant.name,
       participant.role,
+      participant.email || '',
+      participant.skills ? participant.skills.join(';') : '',
       assignedTeam ? assignedTeam.teamName || `Team ${assignedTeam.teamNumber}` : 'Unassigned'
     ]);
   }
@@ -112,10 +114,30 @@ export const generateTeamsPDF = (project) => {
             .fillColor('#000000');
 
           for (const member of team.members) {
+            // Member name and role
             doc.text(`• ${member.name}`, { continued: true, indent: 20 })
               .fillColor('#6B7280')
               .text(` - ${member.role}`)
               .fillColor('#000000');
+
+            // Email if provided
+            if (member.email) {
+              doc.fontSize(9)
+                .fillColor('#9CA3AF')
+                .text(`  ${member.email}`, { indent: 24 })
+                .fillColor('#000000');
+            }
+
+            // Skills if provided
+            if (member.skills && member.skills.length > 0) {
+              doc.fontSize(9)
+                .fillColor('#4F46E5')
+                .text(`  Skills: ${member.skills.join(', ')}`, { indent: 24 })
+                .fillColor('#000000');
+            }
+
+            doc.fontSize(11);
+            doc.moveDown(0.3);
           }
 
           doc.moveDown(1.5);
@@ -131,19 +153,15 @@ export const generateTeamsPDF = (project) => {
           .text('No teams generated yet', { align: 'center' });
       }
 
-      // Footer
-      const pages = doc.bufferedPageRange();
-      for (let i = 0; i < pages.count; i++) {
-        doc.switchToPage(i);
-        doc.fontSize(10)
-          .fillColor('#9CA3AF')
-          .text(
-            `Page ${i + 1} of ${pages.count}`,
-            50,
-            doc.page.height - 50,
-            { align: 'center' }
-          );
-      }
+      // Add footer to current page
+      doc.fontSize(10)
+        .fillColor('#9CA3AF')
+        .text(
+          `Generated on ${new Date().toLocaleDateString()}`,
+          50,
+          doc.page.height - 50,
+          { align: 'center' }
+        );
 
       doc.end();
     } catch (error) {
@@ -166,7 +184,10 @@ export const generateTeamStats = (project) => {
     teamStats: [],
     constraints: {
       total: project.constraints.length,
-      byType: {}
+      cannotBeTogether: 0,
+      mustBeTogether: 0,
+      roleDistribution: 0,
+      skillBased: 0
     }
   };
 
@@ -177,7 +198,15 @@ export const generateTeamStats = (project) => {
 
   // Constraint statistics
   project.constraints.forEach(c => {
-    stats.constraints.byType[c.type] = (stats.constraints.byType[c.type] || 0) + 1;
+    if (c.type === 'cannot_be_together') {
+      stats.constraints.cannotBeTogether++;
+    } else if (c.type === 'must_be_together') {
+      stats.constraints.mustBeTogether++;
+    } else if (c.type === 'role_distribution') {
+      stats.constraints.roleDistribution++;
+    } else if (c.type === 'skill_based') {
+      stats.constraints.skillBased++;
+    }
   });
 
   // Team-specific stats
@@ -192,7 +221,7 @@ export const generateTeamStats = (project) => {
         teamNumber: team.teamNumber,
         teamName: team.teamName || `Team ${team.teamNumber}`,
         memberCount: team.members.length,
-        roles: teamRoles,
+        roleBreakdown: teamRoles,
         roleDiversity: Object.keys(teamRoles).length
       });
     });
@@ -202,6 +231,8 @@ export const generateTeamStats = (project) => {
     stats.averageTeamSize = teamSizes.reduce((a, b) => a + b, 0) / teamSizes.length;
     stats.minTeamSize = Math.min(...teamSizes);
     stats.maxTeamSize = Math.max(...teamSizes);
+  } else {
+    stats.averageTeamSize = 0;
   }
 
   return stats;

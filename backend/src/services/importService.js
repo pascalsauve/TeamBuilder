@@ -7,7 +7,7 @@ import { parse } from 'csv-parse/sync';
 
 /**
  * Parse CSV file and extract participants
- * Expected format: Name,Role or Name,Role,Skills
+ * Expected format: Name,Role,Email,Skills
  */
 export const parseParticipantsCSV = (csvContent) => {
   try {
@@ -43,7 +43,8 @@ export const parseParticipantsCSV = (csvContent) => {
 
       const name = row[0]?.trim();
       const role = row[1]?.trim();
-      const skills = row[2]?.trim();
+      const email = row[2]?.trim();
+      const skills = row[3]?.trim();
 
       if (!name) {
         errors.push(`Line ${lineNumber}: Name is required`);
@@ -62,6 +63,11 @@ export const parseParticipantsCSV = (csvContent) => {
       }
 
       const participant = { name, role };
+
+      // Add email if provided
+      if (email) {
+        participant.email = email;
+      }
 
       // Add skills if provided
       if (skills) {
@@ -114,11 +120,11 @@ export const validateImportedParticipants = (importedParticipants, existingParti
  * Generate sample CSV template
  */
 export const generateSampleCSV = () => {
-  return `Name,Role,Skills
-Alice Johnson,Developer,JavaScript;React;Node.js
-Bob Smith,Designer,UI/UX;Figma;Photoshop
-Carol Williams,Product Manager,Agile;Scrum
-David Brown,Data Scientist,Python;ML;Statistics
-Eve Davis,Developer,Python;Django;PostgreSQL
-Frank Miller,Designer,Branding;Illustration`;
+  return `Name,Role,Email,Skills
+Alice Johnson,Developer,alice@example.com,JavaScript;React;Node.js
+Bob Smith,Designer,bob@example.com,UI/UX;Figma;Photoshop
+Carol Williams,Product Manager,carol@example.com,Agile;Scrum
+David Brown,Data Scientist,david@example.com,Python;ML;Statistics
+Eve Davis,Developer,eve@example.com,Python;Django;PostgreSQL
+Frank Miller,Designer,frank@example.com,Branding;Illustration`;
 };
