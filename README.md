@@ -349,7 +349,7 @@ Future:
 
 ## 11. License
 
-ISC
+GNU GPL 3.0
 
 ## 12. Support
 
