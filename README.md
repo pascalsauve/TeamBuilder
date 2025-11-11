@@ -1,326 +1,177 @@
-# Team Builder - Hackathon Team Generator
+# Team Builder v2 - Hackathon Team Generator
 
-A full-stack web application for creating optimized hackathon teams based on roles, team sizes, and custom constraints. Built with Vue 3 and Node.js.
+A full-stack application for generating optimized hackathon teams with advanced constraints, export/import, history/versioning, notifications, and admin capabilities.
 
-## Features
+## 1. Features (v2 Consolidated)
 
-### Core Functionality (v1)
-- **Intelligent Team Generation**: Create balanced teams using an optimization algorithm
-- **Role-based Assignment**: Organize participants by their roles (Developer, Designer, etc.)
-- **Custom Constraints**: Define rules like "User A cannot be with User B" or "User C must be with User D"
-- **Randomness Control**: Adjust the randomness factor (0-100%) for team generation
-- **Manual Adjustments**: Modify teams after optimization with drag-and-drop functionality
-- **Team Persistence**: Save and load team configurations
+### Team & Optimization
+- Intelligent multi-iteration team generation (balance + constraints + role distribution)
+- Adjustable randomness factor (0–100%) influencing iterations
+- Manual team adjustments (rename, move, drag-and-drop, reorder)
+- Team history & versioning (save, list, restore)
+- Optimization scoring (penalties/rewards)
+
+### Participants & Data
+- Add/remove participants with role
+- Extended participant fields: email (notifications), skills (array)
+- Role distribution exact counts per team
+- Skill-based constraints (backend-ready)
+
+### Constraints (Implemented)
+1. cannot_be_together (≥2)
+2. must_be_together (≥2, ≤ teamSize)
+3. role_distribution (roleRequirements sum must equal teamSize)
+4. skill_based (min/max per skill, backend only)
+
+### Export / Import / Stats
+- Export teams (CSV, PDF)
+- Export participants (CSV)
+- Import participants (CSV with duplicate handling & skills parsing)
+- Detailed statistics endpoint (role counts, diversity, constraint breakdown)
+
+### Notifications
+- Bulk team assignment emails
+- Optional auto-send on optimization (toggle)
+- Tracks lastSentAt
+- Skips participants without email
+
+### Admin (Backend Complete)
+- User listing, detail, role update, deletion
+- Project listing
+- System statistics (users/projects summary)
+- Role-based access control (user/admin)
 
 ### Authentication
-- **User Registration**: Create an account with username and email
-- **Email Verification**: Verify email addresses via magic link
-- **Password Login**: Traditional username/password authentication
-- **Magic Link Login**: Passwordless login via email link
+- Registration with email verification
+- Password login
+- Magic link login (email token)
+- JWT authentication (7-day expiry)
 
-### User Experience
-- **Dashboard**: View all your team projects
-- **Project Management**: Create, edit, and delete projects
-- **Real-time Updates**: See optimization scores and constraint violations
-- **Responsive Design**: Works on desktop and tablet devices
+### Technology Summary
+- Backend: Node.js, Express, MongoDB (Mongoose), JWT, Nodemailer
+- Frontend: Vue 3, Pinia, Vue Router, Axios, Vite
+- Additional libs: csv-parse, csv-stringify, pdfkit, multer
 
-### Extended Backend Features (v2)
-- Export teams to CSV and PDF (backend complete)
-- Export participants to CSV
-- Import participants from CSV (duplicate & validation handling)
-- Detailed team statistics endpoint
-- Team history & versioning (save, list, restore)
-- Email notifications for team assignments
-- Admin panel backend (user/project/system stats, role management)
-- Skill-based constraints (backend only)
-- Enhanced participant schema (skills, email)
-- Role distribution exact counts per team
+> Frontend UI for v2 additions (export/import/history/admin/notifications/skill constraints) pending. Backend fully operational.
 
-> Frontend UI for v2 features is not yet implemented. Backend endpoints are ready.
-
-## Tech Stack
+## 2. Installation
 
 ### Backend
-- **Node.js** with Express.js
-- **MongoDB** with Mongoose ODM
-- **JWT** for authentication
-- **Nodemailer** for email services
-- **bcrypt** for password hashing
-
-### Frontend
-- **Vue 3** with Composition API
-- **Vue Router** for navigation
-- **Pinia** for state management
-- **Vite** for build tooling
-- **Axios** for HTTP requests
-
-### Additional Backend Dependencies (v2)
-Installed in backend/package.json:
-```bash
-npm install csv-parse csv-stringify pdfkit multer
-```
-
-- csv-parse / csv-stringify: CSV import/export
-- pdfkit: PDF generation
-- multer: File upload handling
-
-## Prerequisites
-
-- Node.js (v16 or higher)
-- MongoDB (v5 or higher)
-- SMTP email service (Gmail, SendGrid, etc.)
-
-## Installation
-
-### 1. Clone the repository
-
-```bash
-git clone <repository-url>
-cd TeamBuilder
-```
-
-### 2. Backend Setup
-
 ```bash
 cd backend
 npm install
 ```
-
-Create a `.env` file in the `backend` directory:
-
+`.env` example:
 ```env
-# Server Configuration
 PORT=8080
-NODE_ENV=development
-
-# Database
 MONGODB_URI=mongodb://localhost:27017/teambuilder
-
-# JWT Secret (change this!)
 JWT_SECRET=change-this-to-a-secure-random-string
-
-# Email Configuration (Gmail example)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
 EMAIL_FROM=noreply@teambuilder.com
-
-# Frontend URL
 FRONTEND_URL=http://localhost:5173
-
-# Magic Link Token Expiry (in minutes)
 MAGIC_LINK_EXPIRY=15
 ```
 
-### 3. Frontend Setup
-If using backend on 8080:
+### Frontend
 ```bash
-cd ../frontend
+cd frontend
 npm install
 ```
-
-Create a `.env` file in the `frontend` directory (optional):
-
+`frontend/.env`:
 ```env
 VITE_API_URL=http://localhost:8080/api
 ```
 
-### 4. Database Setup
-
-Make sure MongoDB is running on your system:
-
+### Run
 ```bash
-# macOS (with Homebrew)
-brew services start mongodb-community
-
-# Linux
-sudo systemctl start mongod
-
-# Windows
-net start MongoDB
+# Terminal 1
+cd backend && npm run dev
+# Terminal 2
+cd frontend && npm run dev
 ```
-
-## Running the Application
-
-### Development Mode
-
-**Terminal 1 - Backend:**
-```bash
-cd backend
-npm run dev
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-```
-
-The application will be available at:
+- Backend: http://localhost:8080
 - Frontend: http://localhost:5173
-- Backend API: http://localhost:8080
 
-### Production Build
+## 3. Core Workflows
 
-**Backend:**
+### Create & Optimize
+1. Create project (name, teamSize, randomnessFactor, participants).
+2. Add constraints.
+3. Optimize teams (`POST /api/teams/:id/optimize`).
+4. (Optional) Save version (`POST /api/teams/:id/history/save`).
+
+### Export
+- Teams CSV: `GET /api/export/teams/:id/csv`
+- Teams PDF: `GET /api/export/teams/:id/pdf`
+- Participants CSV: `GET /api/export/teams/:id/participants/csv`
+- Stats: `GET /api/export/teams/:id/stats`
+
+### Import
 ```bash
-cd backend
-npm start
+POST /api/export/teams/:id/import  (multipart/form-data: file=participants.csv)
+CSV Columns: Name,Role,Skills (semicolon separated)
 ```
 
-**Frontend:**
-```bash
-cd frontend
-npm run build
-npm run preview
-```
-
-## Email Configuration
-
-### Using Gmail
-
-1. Enable 2-factor authentication on your Google account
-2. Generate an App Password:
-   - Go to Google Account → Security → 2-Step Verification → App passwords
-   - Create a new app password for "Mail"
-   - Use this password in your `.env` file as `EMAIL_PASS`
-
-### Using Other Email Services
-
-Update the following in your `.env` file:
-
-```env
-EMAIL_HOST=smtp.your-service.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@domain.com
-EMAIL_PASS=your-password
-```
-
-## Usage Guide
-
-### 1. Register an Account
-
-1. Navigate to http://localhost:5173
-2. Click "Register here"
-3. Enter username, email, and password
-4. Check your email for verification link
-5. Click the verification link to activate your account
-
-### 2. Create a Project
-
-1. Log in to your account
-2. Click "Create New Project"
-3. Enter project name (e.g., "Spring 2024 Hackathon")
-4. Set team size (default: 4)
-5. Set randomness factor (default: 30%)
-6. Add participants with their names and roles
-
-### 3. Add Constraints
-
-Two types of constraints are available:
-
-**Cannot be Together**
-- Select 2 or more participants who should NOT be on the same team
-- Example: "Alice and Bob cannot work together"
-
-**Must be Together**
-- Select 2 or more participants who MUST be on the same team
-- Example: "Carol and Dave are a package deal"
-
-### Constraints (Updated)
-Supported types:
-1. cannot_be_together (≥2 participants)
-2. must_be_together (≥2 participants, ≤ team size)
-3. role_distribution (exact count per role per team; counts must sum to teamSize)
-4. skill_based (backend only; requires skillRequirements array with min/max per skill)
-
-Example role distribution constraint request:
-```json
-{
-  "type": "role_distribution",
-  "roleRequirements": {
-    "Developer": 2,
-    "Designer": 1,
-    "Product Manager": 1
-  },
-  "description": "Each team must have 2 Developers, 1 Designer, 1 PM"
-}
-```
-
-### 4. Optimize Teams
-
-1. Click "Optimize Teams" button
-2. The algorithm will generate teams based on:
-   - Team size preferences
-   - Role distribution
-   - Constraint satisfaction
-   - Randomness factor
-3. View optimization score and constraint violations
-
-### 5. Manual Adjustments
-
-After optimization, you can:
-- **Rename teams**: Click on team names to edit
-- **Move members**: Use the dropdown or drag-and-drop
-- **Re-optimize**: Click "Re-optimize" to generate new teams
-- **Modify settings**: Change team size or randomness and re-optimize
-
-### 6. Save and Load
-
-Projects are automatically saved to the database. Access them anytime from the Dashboard.
-
-### New v2 Workflows (Backend Available)
-
-#### Export Teams
-1. Optimize teams.
-2. Call GET `/api/export/teams/:id/csv` or `/api/export/teams/:id/pdf`.
-
-#### Import Participants
-1. Prepare CSV: `Name,Role,Skills`
-2. POST `/api/export/teams/:id/import` (multipart/form-data with file).
-
-#### Team History
-- Save current configuration: `POST /api/teams/:id/history/save`
-- List versions: `GET /api/teams/:id/history`
+### Versioning
+- Save: `POST /api/teams/:id/history/save`
+- List: `GET /api/teams/:id/history`
 - Restore: `POST /api/teams/:id/history/:version/restore`
 
-#### Notifications
-- Send assignment emails: `POST /api/teams/:id/notify`
-- Update settings: `PATCH /api/teams/:id/notifications` (e.g. `{ "sendOnOptimization": true }`)
+### Notifications
+- Send: `POST /api/teams/:id/notify`
+- Settings: `PATCH /api/teams/:id/notifications` (e.g. `{ "sendOnOptimization": true }`)
 
-#### Admin (after promoting a user)
+### Admin Setup
+Promote a user to admin:
 ```bash
 mongosh teambuilder
 db.users.updateOne({ email: "your-email@example.com" }, { $set: { role: "admin" } })
 ```
 
-## API Endpoints
+## 4. API Endpoints (v2 Complete)
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login with password
-- `POST /api/auth/verify-email` - Verify email address
-- `POST /api/auth/request-magic-link` - Request magic link
-- `POST /api/auth/verify-magic-link` - Verify magic link
-- `GET /api/auth/me` - Get current user
+### Auth
+```
+POST  /api/auth/register
+POST  /api/auth/login
+POST  /api/auth/verify-email
+POST  /api/auth/request-magic-link
+POST  /api/auth/verify-magic-link
+GET   /api/auth/me
+```
 
-### Team Projects (v1)
-- `GET /api/teams` - Get all projects
-- `GET /api/teams/:id` - Get single project
-- `POST /api/teams` - Create new project
-- `PUT /api/teams/:id` - Update project
-- `DELETE /api/teams/:id` - Delete project
-- `POST /api/teams/:id/participants` - Add participant
-- `DELETE /api/teams/:id/participants/:participantId` - Remove participant
-- `POST /api/teams/:id/constraints` - Add constraint
-- `DELETE /api/teams/:id/constraints/:constraintId` - Remove constraint
-- `POST /api/teams/:id/optimize` - Optimize teams
-- `PUT /api/teams/:id/teams` - Update generated teams
+### Projects & Participants
+```
+GET    /api/teams
+GET    /api/teams/:id
+POST   /api/teams
+PUT    /api/teams/:id
+DELETE /api/teams/:id
+POST   /api/teams/:id/participants
+DELETE /api/teams/:id/participants/:participantId
+POST   /api/teams/:id/constraints
+DELETE /api/teams/:id/constraints/:constraintId
+POST   /api/teams/:id/optimize
+PUT    /api/teams/:id/teams
+```
 
-### Additional Endpoints (v2)
+### History / Versioning
+```
+POST   /api/teams/:id/history/save
+GET    /api/teams/:id/history
+POST   /api/teams/:id/history/:version/restore
+```
 
-#### Export / Import
+### Notifications
+```
+POST   /api/teams/:id/notify
+PATCH  /api/teams/:id/notifications
+```
+
+### Export / Import / Stats
 ```
 GET    /api/export/teams/:id/csv
 GET    /api/export/teams/:id/participants/csv
@@ -330,20 +181,7 @@ POST   /api/export/teams/:id/import
 GET    /api/export/sample-csv
 ```
 
-#### History / Versioning
-```
-POST   /api/teams/:id/history/save
-GET    /api/teams/:id/history
-POST   /api/teams/:id/history/:version/restore
-```
-
-#### Notifications
-```
-POST   /api/teams/:id/notify
-PATCH  /api/teams/:id/notifications
-```
-
-#### Admin
+### Admin
 ```
 GET    /api/admin/users
 GET    /api/admin/users/:id
@@ -353,100 +191,169 @@ GET    /api/admin/projects
 GET    /api/admin/stats
 ```
 
-### Constraint Addition (role_distribution example)
-...existing code...
+## 5. Constraints Details
 
-## Data Model Updates (v2)
+### role_distribution
+- roleRequirements object keys = roles, values = exact count per team.
+- Sum must equal teamSize.
+- Validation ensures enough participants overall.
 
-### Participant (extended)
-```javascript
+Example:
+```json
 {
-  name: String,
-  role: String,
-  email: String,        // optional (for notifications)
-  skills: [String]      // optional (for skill-based constraints)
+  "type": "role_distribution",
+  "roleRequirements": { "Developer": 2, "Designer": 1, "PM": 1 },
+  "description": "Each team must have 2 Developers, 1 Designer, 1 PM"
 }
 ```
 
-### Constraint (extended)
-```javascript
+### skill_based (backend)
+```json
 {
-  type: 'cannot_be_together' | 'must_be_together' | 'role_distribution' | 'skill_based',
-  participants: [String],           // for participant-based
-  roleRequirements: { Role: Number }, // for role_distribution
-  skillRequirements: [               // for skill_based
-    { skill: String, minCount: Number, maxCount: Number }
+  "type": "skill_based",
+  "skillRequirements": [
+    { "skill": "React", "minCount": 1, "maxCount": 2 },
+    { "skill": "Python", "minCount": 1, "maxCount": 1 }
   ],
-  description: String
+  "description": "React and Python coverage"
 }
 ```
 
-### Team Project (added fields)
-```javascript
-{
-  history: [ { version, teams, optimizationScore, notes, generatedAt } ],
-  currentVersion: Number,
-  notifications: {
-    sendOnOptimization: Boolean,
-    lastSentAt: Date
-  }
-}
-```
+## 6. Data Models (Expanded)
 
-### User (added field)
+### User
 ```javascript
 {
+  username, email, password(hash), isVerified,
   role: 'user' | 'admin',
-  lastLoginAt: Date
+  lastLoginAt,
+  verificationToken, verificationTokenExpiry,
+  resetPasswordToken, resetPasswordExpiry,
+  timestamps
 }
 ```
 
-## Optimization Algorithm (Updated)
+### Participant
+```javascript
+{ name, role, email, skills: [String], assignedTeam }
+```
+
+### Constraint
+```javascript
+{
+  type,
+  participants: [String],
+  roleRequirements: { [role]: Number },
+  skillRequirements: [{ skill, minCount, maxCount }],
+  description
+}
+```
+
+### TeamProject
+```javascript
+{
+  userId,
+  projectName,
+  participants: [...],
+  constraints: [...],
+  teamSize,
+  numberOfTeams,
+  randomnessFactor,
+  generatedTeams: [{ teamNumber, teamName, members: [{ name, role }] }],
+  isOptimized,
+  optimizationScore,
+  history: [{ version, teams, optimizationScore, notes, generatedAt }],
+  currentVersion,
+  notifications: { sendOnOptimization, lastSentAt },
+  timestamps
+}
+```
+
+## 7. Optimization Algorithm Summary
+
+Base score: 100  
 Penalties:
 - cannot_be_together: -20
 - must_be_together: -15
 - role_distribution mismatch: -18 per team per role
-- size imbalance: -5 per member difference
-Bonuses:
-- role diversity: up to +5 per team
+- team size imbalance: -5 per size difference > 1
+Bonus:
+- Role diversity: up to +5 per team (uniqueRoles/totalRoles * 5)
 
-Iterations scale by randomness factor (≤20 → 100, >20 → 50, >50 → 10).
+Iterations:
+- randomnessFactor ≤ 20 → 100 iterations
+- 21–50 → 50 iterations
+- >50 → 10 iterations
 
-## Future Enhancements
+Greedy placement with constraint-aware scoring + randomness (partial shuffle).
 
-- Export teams to CSV/PDF
-- Team analytics and statistics
-- Multiple optimization strategies
-- Real-time collaboration
-- Integration with Slack/Discord
-- Mobile app version
-
-## Troubleshooting (Updated Ports)
-- If frontend 5173 cannot reach backend: verify backend runs on 8080 and `VITE_API_URL` matches.
-- Constraint errors: ensure role distribution totals equal `teamSize`.
-
-## Known Gaps (Frontend Pending)
-- No UI yet for export/import/history/admin/notifications/skill constraints.
-- All endpoints testable via curl/Postman.
-
-## Quick Test Commands
+## 8. Quick Test Commands
 
 ```bash
-# Export teams CSV
+# Register
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","email":"test@example.com","password":"secret123"}'
+
+# Optimize
+curl -X POST http://localhost:8080/api/teams/PROJECT_ID/optimize \
+  -H "Authorization: Bearer TOKEN"
+
+# Export CSV
 curl -H "Authorization: Bearer TOKEN" \
   http://localhost:8080/api/export/teams/PROJECT_ID/csv -o teams.csv
 
-# Save version
+# Save Version
 curl -X POST -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"notes":"Initial"}' \
   http://localhost:8080/api/teams/PROJECT_ID/history/save
+
+# Send Notifications
+curl -X POST -H "Authorization: Bearer TOKEN" \
+  http://localhost:8080/api/teams/PROJECT_ID/notify
 ```
 
-## License
+## 9. Troubleshooting
+
+| Issue | Check |
+|-------|-------|
+| 401 errors | Token expired / missing Authorization header |
+| Role distribution error | Counts sum != teamSize or insufficient participants |
+| CSV import fails | Header format: Name,Role,Skills |
+| Emails not sent | SMTP credentials / less secure app access / app password |
+| Admin access denied | User role set to 'admin' in DB |
+| Frontend not hitting API | VITE_API_URL matches backend port 8080 |
+
+## 10. Roadmap
+
+Already Implemented (Backend):
+- CSV/PDF Export, Import, Stats
+- History & Versioning
+- Notifications
+- Admin Panel
+- Skill-Based & Role Distribution Constraints
+
+Pending (Frontend):
+- UI for export/import/history/admin/notifications/skill constraints
+- Analytics visualization
+- Skill-based assignment UI
+
+Future:
+- XLSX export
+- Real-time collaboration (WebSockets)
+- Slack/Discord integration
+- Dark mode
+- Test coverage (unit/E2E)
+- Docker + CI/CD
+
+## 11. License
 
 ISC
 
-## Support
+## 12. Support
 
-For issues and questions, please open an issue on the GitHub repository.
+Open an issue in the repository for bugs or questions.
+
+---
+Backend v2 complete. Frontend enhancements pending integration.
